@@ -1,6 +1,0 @@
-#!/bin/bash
-if [ "$(pactl list short | grep -c "module-loopback")" -eq "0" ]; then
-	pactl load-module module-loopback latency_msec=1;
-else
-	pactl unload-module module-loopback;
-fi;
