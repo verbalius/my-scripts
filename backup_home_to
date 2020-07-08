@@ -1,0 +1,49 @@
+#!/bin/bash
+
+USAGE="Usage: backup_home_to [path to backup folder]"
+
+# some helpers and error handling:
+info() { printf "${0}: [i] %s\n" "$*" >&1; }
+error() { printf "${0}: [x] %s\n" "$*" >&2; exit 1; }
+trap 'echo "[ ! ] Backup interrupted"; exit 2;' INT TERM
+
+if [ $# != 1 ]; then
+    echo -e "[x] No input specified \n$USAGE" >&2
+    exit 1
+fi
+
+if [[ $1 =~ ^\/dev\/sd[a-z]$ ]]; then
+    echo -e "[x] Please don't overwrite your data.. \n$USAGE" >&2
+    exit 1
+fi
+
+read -p "[!] You are going to backup home folder to ${1}, continue [y/N]? " confirmation
+
+if ! [[ $confirmation =~ ^[yY]$ ]]; then
+	error "User cancelled.."
+fi
+
+# main
+rsync -aAXSPv --one-file-system --delete --exclude={\
+'.*',\
+'.cache*',\
+'/Downloads/*',\
+'/Videos/Movies/*',\
+'/home/${USER}/.cache/*',\
+'/home/${USER}/Videos/Movies/*',\
+'/home/${USER}/Downloads/*',\
+'/home/${USER}/.*/*',\
+'/home/${USER}/.*'} /home/${USER}/ "${1}"
+
+# use highest exit code as global exit code
+global_exit=$?
+
+if [ ${global_exit} -eq 0 ]; then
+    info "[+] Backup finished successfully"
+elif [ ${global_exit} -eq 1 ]; then
+    info "[!] Backup finished with warnings"
+else
+    info "[x] Backup finished with errors"
+fi
+
+exit ${global_exit}

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+echo "[>] Starting a script"
+
+function error {
+	echo "[x] Creating file failed.."
+}
+
+trap error INT TERM
+
+DATE=`date '+%Y-%m-%d_%H:%M:%S'`
+input_file=$1
+output_file=${input_file%.*}.pdf
+
+echo "[>] Creating PDF from $input_file"
+
+pandoc --pdf-engine=xelatex	\
+		-V mainfont="CMU Serif"			\
+		-V monofont="CMU Typewriter Text"	\
+		-V geometry:paperwidth=210mm	\
+		-V geometry:paperheight=290mm	\
+		-V geometry:margin=0.5in		\
+		$input_file						\
+		-o $output_file
+
+echo "[+] Created $output_file"

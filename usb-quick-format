@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# set -euo pipefail
+IFS=$'\n\t'
+
+USAGE="Usage: usb-quick-format /dev/sd[b-z]"
+
+info() { printf "usb-quick-format: [i] %s\n" "$*" >&1; }
+error() { printf "usb-quick-format: [x] %s\n" "$*" >&2; exit 1; }
+trap 'echo "Formatting interrupted"; exit 2;' INT TERM
+
+if ! [ "$(which mlabel)" ]; then
+	error "Please install mtools package"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+	error "Please run as root"
+fi
+
+if [ $# != 1 ]; then
+    echo -e "[x] No input specified \n$USAGE" >&2
+    exit 1
+fi
+
+if ! [[ $1 =~ ^\/dev\/sd[b-z]$ ]]; then
+    echo -e "[x] Path is not a usb device \n$USAGE" >&2
+    exit 1
+elif [ -b $1 ]; then
+   	usb_path=$1
+else
+	error "Device $1 doesn't exist"
+fi
+
+read -p "[!] You are going to loose all data on device ${usb_path}, continue [y/N]? " confirmation
+
+if ! [[ $confirmation =~ ^[yY]$ ]]; then
+	error "User cancelled.."
+fi
+
+info "Unmounting ${usb_path}"
+umount ${usb_path}* &> /dev/null || /bin/true
+
+info "Formatting ${usb_path} started"
+
+parted -s $usb_path mklabel msdos
+info "Created new msdos partition table on ${usb_path}"
+
+parted -s $usb_path mkpart primary fat32 0% 100%
+info "Created new FAT32 partition with number 1 on ${usb_path}"
+
+mkfs.fat -F32 ${usb_path}1 &>/dev/null
+info "Formatted partition ${usb_path}1 with FAT32 filesystem"
+
+formatting=$?
+
+read -p "[?] New label for usb device (max 8 ASCII letters): " usb_name
+if [[ $usb_name =~ ^[a-zA-Z]{1,8}$ ]]; then
+	usb_name=${usb_name,,}
+	mlabel -i ${usb_path}1 -v ::${usb_name}
+else
+	info "[-] Empty or wrong USB label specified, using default device ID"
+fi
+
+makelabel=$?
+
+global_exit=$(( formatting > makelabel ? formatting : makelabel ))
+
+if [ ${global_exit} -eq 0 ]; then
+    info "Formatting ${usb_path} finished successfuly!"
+elif [ ${global_exit} -eq 1 ]; then
+    info "Formatting ${usb_path} finished with warnings"
+else
+    info "Formatting ${usb_path} finished with errors"
+fi

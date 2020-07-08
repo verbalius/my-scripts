@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+USAGE="Usage: compaq [sleep/wake]"
+
+if [ $# != 1 ]; then
+    echo -e "$USAGE" >&2
+    exit 1
+fi
+
+if [ "$1" == "wake" ]; then
+	echo -e "[wake] Waking up.."
+	wol 00:02:A5:26:BE:49 > /dev/null
+	if [ $? == 0 ];then
+		echo -e "[ツ] Must be awaken"
+	else
+		echo -e "[!] Can't wake it up.."
+	fi
+	exit 0
+elif [ "$1" == "sleep" ]; then
+	echo -e "[sleep] Telling a bedtime story.."
+	ssh -f user@192.168.0.105 "sudo systemctl suspend"
+	if [ $? == 0 ];then
+		echo -e "[ツ] Must be asleep"
+	else
+		echo -e "[!] Can't make it sleep.."
+	fi
+fi

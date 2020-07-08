@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# some helpers and error handling:
+info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
+trap 'echo  [!] $( date ) Backup interrupted >&2; exit 2' INT TERM
+
+if [ "$EUID" -ne 0 ]
+  then echo "[!] Please run as root"
+  exit
+fi
+
+# main
+rsync -aAXSv --one-file-system --delete --exclude={"/swapfile","/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/home"} /home/core_system_bkp /
+
+# use highest exit code as global exit code
+global_exit=$?
+
+if [ ${global_exit} -eq 0 ]; then
+    info "[+] Restore finished successfully"
+elif [ ${global_exit} -eq 1 ]; then
+    info "[!] Restore finished with warnings"
+else
+    info "[x] Restore finished with errors"
+fi
+
+exit ${global_exit}
